@@ -1,0 +1,16 @@
+pip
+pypdf
+docarray
+faiss-cpu
+langchain
+langsmith
+langchain-community
+langchain-core
+langchain-ollama
+langchain-openai
+openai
+arxiv
+wikipedia
+duckduckgo-search
+google-search-results
+git+https://github.com/poshjosh/pyu.git@v0.1.9#egg=pyu
