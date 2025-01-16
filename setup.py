@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 if __name__ == "__main__":
     setup(name="docchatai",
           version="0.0.1",
-          description="Ask AI anything about any document",
+          description="I am DocChatAI, ask me anything about any document",
           author="PoshJosh",
           author_email="posh.bc@gmail.com",
           install_requires=["pypdf", "docarray", "langchain", "langsmith", "langchain-community",

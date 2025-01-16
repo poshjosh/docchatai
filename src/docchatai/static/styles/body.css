@@ -1,0 +1,85 @@
+body {
+    font-size: 1.5rem;
+    font-family: 'Roboto', sans-serif;
+    padding:1rem;
+    background-color: #024 /** THEME_BG_COLOR_1 */;
+    color: #def;
+}
+
+body .heading {
+    width: 100%;
+    background-color: #012 /** THEME_BG_COLOR_2 */;
+    font-size: 2rem;
+    font-weight: 700;
+    padding: 0.5rem;
+}
+
+body .error {
+    width: 100%;
+    background-color: #db4437;
+    color: white;
+    margin: 0.5rem;
+}
+
+body .info {
+    width: 100%;
+    background-color: white;
+    color: navy;
+    margin: 0.5rem;
+}
+
+.chat_message {
+    width: 75%;
+    margin: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+}
+.chat_message_left { float: left; background-color:blue; }
+.chat_message_right { float: right; background-color:green; }
+
+#page_bottom {
+    width: 100%;
+    font-size: 0.75rem;
+    background-color: #012 /** THEME_BG_COLOR_2 */;
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+}
+
+.chat_messages {
+    width: 40rem;
+    background-color: #012 /** THEME_BG_COLOR_2 */;
+    padding: 1rem;
+    border-radius: 0.5rem;
+}
+
+form .control {
+    font-size: 1.5rem;
+    margin-top: 0.5rem;
+    margin-bottom:0.5rem;
+    border-radius: 0.5rem;
+}
+
+form .control_error { color: #db4437; }
+
+form button {
+    background-color: #0f9df7;
+    padding: 0.5rem 1rem;
+    border: none;
+}
+
+.spinner {
+    width: 50px;
+    padding: 8px;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: #25b09b;
+    --_m:
+            conic-gradient(#0000 10%,#000),
+            linear-gradient(#000 0 0) content-box;
+    -webkit-mask: var(--_m);
+    mask: var(--_m);
+    -webkit-mask-composite: source-out;
+    mask-composite: subtract;
+    animation: l3 1s infinite linear;
+}
+@keyframes l3 {to{transform: rotate(1turn)}}

@@ -1,0 +1,47 @@
+{% extends "common/page.html" %}
+
+{% block content %}
+    <div class="chat_messages">
+        {% for chat in chats %}
+            {% if chat.request and chat.response %}
+                <div class="chat_message_left chat_message">{{ chat.request }}</div>
+                <div class="chat_message_right chat_message">{{ chat.response }}</div>
+                <div style="clear:both;"></div>
+            {% endif %}
+        {% endfor %}
+        <div id="last_chat" style="display:none;">
+            <div class="chat_message_left chat_message" id="last_chat_request"></div>
+            <div class="chat_message_right chat_message"><div class="spinner"></div></div>
+            <div style="clear:both;"></div>
+        </div>
+        {% if chats %}<br/>{% endif %}
+        <form id="chat_request_form" action="/chat/request" method="post" enctype="multipart/form-data">
+            <label for="request">
+                {% if not chats %}Ask me anything about your document{% endif %}
+            </label>
+            <textarea id="request" name="request" class="control"
+                      placeholder="Type your question here" rows="3" cols="42"></textarea>
+            <div id="request_error" class="control_error" style="display:none;"></div>
+            <br/>
+            <button type="submit" id="submit" class="control">Send</button>
+        </form>
+    </div>
+    <script>
+        const chatRequestForm = document.getElementById("chat_request_form");
+        const request = document.getElementById("request");
+        request.value = '';
+        chatRequestForm.addEventListener("submit", function(event){
+            const requestError = document.getElementById("request_error");
+            const requestText = request.value;
+            if (requestText && requestText.trim()) {
+                requestError.style.display = 'none';
+                document.getElementById("last_chat").style.display = 'block';
+                document.getElementById("last_chat_request").innerText = requestText;
+            } else {
+                event.preventDefault();
+                requestError.style.display = 'block';
+                requestError.innerText = 'You did not enter any text'
+            }
+        })
+    </script>
+{% endblock %}

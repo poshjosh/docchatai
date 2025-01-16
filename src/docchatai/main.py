@@ -1,20 +1,24 @@
 import logging.config
-import os
+from datetime import datetime
 
 from app.app import App
 from app.config import RunConfig
-
-LOG_LEVEL = 'INFO' if 'prod' == os.environ.get('APP_PROFILE') else 'DEBUG'
-logging.config.dictConfig({
-    'version': 1,
-    'formatters': {'simple': {'format': '%(asctime)s %(name)s %(levelname)s %(message)s'}},
-    'handlers': {'console': {
-        'class': 'logging.StreamHandler', 'level': f'{LOG_LEVEL}', 'formatter': 'simple'}},
-    'loggers': {'app': {'level': f'{LOG_LEVEL}', 'handlers': ['console'], 'propagate': False}}
-})
+from docchatai.app.chat_service import ChatService
 
 if __name__ == '__main__':
+    run_config = RunConfig()
+    logging.config.dictConfig(run_config.logging_config)
+
     try :
-        App.run(RunConfig())
+        App.init(run_config)
+
+        chat_ai = ChatService.create_chat_ai(run_config)
+
+        # Start asking questions and getting answers in a loop
+        print(f"{datetime.now().time()} Document: {run_config.input_file}")
+        while True:
+            request = input(f'\n{datetime.now().time()} How may I help you?\n')
+            result = chat_ai.invoke(request)
+            print(f"\n{datetime.now().time()}\n{result}")
     finally:
         App.shutdown()

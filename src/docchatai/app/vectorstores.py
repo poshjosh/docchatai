@@ -2,6 +2,7 @@ import hashlib
 import logging
 import os.path
 import re
+from abc import abstractmethod
 from concurrent import futures
 from typing import Iterator
 
@@ -18,6 +19,7 @@ from .config import RunConfig
 from .threads import Threads
 
 logger = logging.getLogger(__name__)
+
 
 class VectorStores:
     non_alpha_numeric_pattern = re.compile('[^A-Za-z0-9_-]+')
@@ -58,44 +60,76 @@ class VectorStores:
             logger.debug(f' Parsed page: {page.metadata}')
             yield docs[0]
 
-    @staticmethod
-    def faiss(run_config: RunConfig, embeddings: Embeddings) -> VectorStore:
-        embeddings = VectorStores.file_backed_embeddings(run_config, embeddings)
-        page_iterator: Iterator[Document] = VectorStores.yield_pages(run_config.input_file)
-        return FAISS.from_documents(list(page_iterator), embeddings)
-
-
 class VectorStoreLoader:
-    def __init__(self, cls=FAISS):
+    @abstractmethod
+    def load(self, run_config: RunConfig, embeddings: Embeddings) -> 'VectorStoreLoader':
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get(self) -> VectorStore:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def wait_till_completed(self) -> VectorStore:
+        raise NotImplementedError()
+
+
+class VectorStoreLoaderSync(VectorStoreLoader):
+    def __init__(self):
+        self.__vectorstore = None
+
+    def load(self, run_config: RunConfig, embeddings: Embeddings) -> VectorStoreLoader:
+        page_list: [Document] = list(VectorStores.yield_pages(run_config.input_file))
+        embeddings = VectorStores.file_backed_embeddings(run_config, embeddings)
+        self.__vectorstore = FAISS.from_documents(page_list, embeddings)
+        return self
+
+    def get(self) -> VectorStore:
+        return self.__vectorstore
+
+    def wait_till_completed(self) -> VectorStore:
+        return self.__vectorstore
+
+
+class VectorStoreLoaderMultiThreaded(VectorStoreLoader):
+    def __init__(self, cls=FAISS, batch_size: int = 0):
         self.__cls = cls
         self.__futures = []
+        self.__batch_size = batch_size
+        self.__vectorstore = None
 
-    def load(self, run_config: RunConfig, embeddings: Embeddings) -> VectorStore:
+    def load(self, run_config: RunConfig, embeddings: Embeddings) -> VectorStoreLoader:
+        page_list: [Document] = list(VectorStores.yield_pages(run_config.input_file))
         embeddings = VectorStores.file_backed_embeddings(run_config, embeddings)
-        page_iterator: Iterator[Document] = VectorStores.yield_pages(run_config.input_file)
+
+        if len(page_list) == 0:
+            raise ValueError('No valid pages found in the document')
+
+        if self.__batch_size <= 0:
+            batch_size = len(page_list) / run_config.max_worker_threads
+            if batch_size < 1:
+                batch_size = 1
+        else:
+            batch_size = self.__batch_size
 
         # First
-        first_page = next(page_iterator, None)
+        first_page = page_list[0]
         if first_page is None:
             raise ValueError('No valid pages found in the document')
         logger.debug(f'Loading page: {first_page.metadata}')
-        vectorstore = self.__cls.from_documents([first_page], embeddings)
+        self.__vectorstore = self.__cls.from_documents([first_page], embeddings)
 
         # Remaining
         def add_pages_to_store(pages: [Document]):
             try:
                 page_nums = ','.join([str(p.metadata['page']) for p in pages])
                 logger.debug(f'Loading pages: {page_nums}')
-                vectorstore.merge_from(self.__cls.from_documents(pages, embeddings))
+                self.__vectorstore.merge_from(self.__cls.from_documents(pages, embeddings))
             except Exception as ex:
                 logger.debug(f'Error loading pages.\n{ex}')
 
-        # Batch size: 10, 15:31:14.883750 - 15:35:59.510052
-        # Batch size: 50, 15:39:49.557199 - 15:40:35.959929
-        # 50 = Threads.MAX_WORKERS
-        batch_size = Threads.MAX_WORKERS
         batch = []
-        for page in page_iterator:
+        for page in page_list[1:]:
             batch.append(page)
             if len(batch) >= batch_size:
                 self.__futures.append(Threads.submit(add_pages_to_store, batch))
@@ -103,10 +137,12 @@ class VectorStoreLoader:
         if len(batch) > 0:
             self.__futures.append(Threads.submit(add_pages_to_store, batch))
 
-        return vectorstore
+        return self
 
-    def wait_till_completed(self):
+    def get(self) -> VectorStore:
+        return self.__vectorstore
+
+    def wait_till_completed(self) -> VectorStore:
         if len(self.__futures) > 0:
             futures.wait(self.__futures)
-
-
+        return self.__vectorstore

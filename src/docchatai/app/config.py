@@ -1,14 +1,37 @@
 import logging
 import os
-from datetime import datetime
 from sys import argv
 
 logger = logging.getLogger(__name__)
 
 class AppConfig:
     @property
+    def secret_key(self) -> str:
+        return os.environ['APP_SECRET_KEY']
+
+    @property
+    def app_name(self) -> str:
+        return "DocChatAI"
+
+    @property
+    def app_title(self) -> str:
+        return f"I am {self.app_name}. Ask me anything about any document."
+
+    @property
     def app_dir(self) -> str:
         return os.environ['APP_DIR']
+
+    @property
+    def uploads_dir(self) -> str:
+        return os.path.join(self.app_dir, 'uploads')
+
+    @property
+    def app_port(self) -> int:
+        return int(os.environ.get('APP_PORT', '8888'))
+
+    @property
+    def is_production(self) -> bool:
+        return os.environ.get('APP_PROFILE') == 'prod'
 
     @property
     def max_results_per_query(self) -> int:
@@ -23,6 +46,14 @@ class AppConfig:
         return 'llama3.1'
 
     @property
+    def default_chat_message_limit(self) -> int:
+        return 100
+
+    @property
+    def max_worker_threads(self) -> int:
+        return int(os.environ.get('MAX_WORKER_THREADS', '50'))
+
+    @property
     def default_chat_template(self) -> str:
         return """
             You are an information retrieval AI.
@@ -34,6 +65,18 @@ class AppConfig:
             
             Context: {context}
         """
+
+    @property
+    def logging_config(self):
+        log_level = 'INFO' if self.is_production is True else 'DEBUG'
+        return {
+            'version': 1,
+            'formatters': {'simple': {'format': '%(asctime)s %(name)s %(levelname)s %(message)s'}},
+            'handlers': {'console': {
+                'class': 'logging.StreamHandler', 'level': f'{log_level}', 'formatter': 'simple'}},
+            'loggers': {'app': {'level': f'{log_level}', 'handlers': ['console'], 'propagate': False}}
+        }
+
 
 
 class RunConfig(AppConfig):
