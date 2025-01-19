@@ -1,6 +1,7 @@
 import logging.config
 import os.path
 
+import jinja2.utils
 from flask import render_template, request, session
 
 from docchatai.app.app import App
@@ -17,6 +18,10 @@ app_config = web_app.config['app_config']
 web_service: WebService = web_app.config['web_service']
 
 logging.config.dictConfig(app_config.logging_config)
+
+@web_app.template_filter('url_quote')
+def url_quote_filter(s):
+    return jinja2.utils.url_quote(s)
 
 @web_app.errorhandler(ValidationError)
 def handle_validation_error(e):
@@ -39,6 +44,7 @@ def chat_file_upload():
     chat_file_path = response_data[ChatVar.FILE.value]
     session[WebVar.CHAT_FILE.value] = chat_file_path
     session[WebVar.CHAT_FILE_NAME.value] = os.path.basename(chat_file_path)
+    session[WebVar.CHAT_MODEL] = response_data[WebVar.CHAT_MODEL]
 
     return render_template(INDEX_TEMPLATE, **web_service.index(response_data))
 
@@ -46,8 +52,12 @@ def chat_file_upload():
 def chat_file_upload_progress():
     return str(web_service.chat_file_upload_progress(WebData.get_session_id()))
 
-@web_app.route('/chat/request')
+@web_app.route('/chat')
 def chat_request():
+    chat_model = WebData.get(request, 'model', None)
+    if chat_model is not None:
+        return render_template(INDEX_TEMPLATE, **web_service.index({"info": "Not yet implemented!"}))
+
     form_data = WebData.collect_request_form(request.form)
 
     response_data = web_service.chat_request(form_data)

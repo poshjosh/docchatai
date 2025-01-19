@@ -29,9 +29,18 @@ class WebVar(str, Enum):
     HEADING = 'heading'
     CHAT_FILE = ChatVar.FILE.value
     CHAT_FILE_NAME = 'chat_file_name'
+    CHAT_MODELS = 'chat_models'
+    CHAT_MODEL = 'chat_model'
 
 
 class WebData:
+    @staticmethod
+    def get(request, key: str, result_if_none: any = None) -> str or None:
+        val = request.args.get(key)
+        if not val:
+            val = request.form.get(key)
+        return result_if_none if not val else val
+
     @staticmethod
     def get_session_id() -> str:
         session_id = session.get(WebVar.SESSION_ID.value, None)

@@ -53,6 +53,12 @@ class ChatService:
     __store = {}
 
     @staticmethod
+    def get_chat_models() -> [dict[str, str]]:
+        return [
+            {'name': 'llama3.1', 'provider': 'ollama'},
+        ]
+
+    @staticmethod
     def model(name: str, provider: str):
         from langchain.chat_models import init_chat_model
         return init_chat_model(name, model_provider=provider, temperature=1.0)

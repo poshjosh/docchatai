@@ -11,10 +11,13 @@
 <body>
     {% include 'common/page_top.html' %}
 
-    <div class="heading">{% block heading %}{{ heading }}{% endblock %}</div>
-
-    <div id="content">
-        {% block content %}{% endblock %}
+    <div id="page_body">
+        <div id="page_heading">{% block heading %}{{ heading }}{% endblock %}</div>
+        <div class="error">{{ error|safe }}</div>
+        <div class="info">{{ info|safe }}</div>
+        <div id="page_content">
+            {% block content %}{% endblock %}
+        </div>
     </div>
 
     {% include 'common/page_bottom.html' %}

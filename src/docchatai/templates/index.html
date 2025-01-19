@@ -1,54 +1,76 @@
 {% extends "common/page.html" %}
 
 {% block content %}
-    <div class="chat_messages">
-        {% for chat in chats %}
-            {% if chat.request and chat.response %}
-                <div class="chat_message_left chat_message">{{ chat.request }}</div>
-                <div class="chat_message_right chat_message">{{ chat.response }}</div>
+    <div id="page_content_left">
+        <div id="side_bar">
+            <p>Chat Models</p>
+            <ul>
+                {% for model in chat_models %}
+                    <li>
+                        {% if chat_model and model.name == chat_model.name %}
+                            {{ model }}
+                        {% else %}
+                            <a href="/chat?model={{ model.name | url_quote }}">
+                                {{ model.name }} by {{ model.provider }}
+                            </a>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    <div id="page_content_right">
+        <div id="chat">
+            {% for chat in chats %}
+                {% if chat.request and chat.response %}
+                    <div class="chat_message_left chat_message">{{ chat.request }}</div>
+                    <div class="chat_message_right chat_message">{{ chat.response }}</div>
+                    <div style="clear:both;"></div>
+                {% endif %}
+            {% endfor %}
+            <div id="last_chat" style="display:none;">
+                <div class="chat_message_left chat_message" id="last_chat_request"></div>
+                <div class="chat_message_right chat_message" id="last_chat_response">
+                    <div class="spinner"></div>
+                </div>
                 <div style="clear:both;"></div>
-            {% endif %}
-        {% endfor %}
-        <div id="last_chat" style="display:none;">
-            <div class="chat_message_left chat_message" id="last_chat_request"></div>
-            <div class="chat_message_right chat_message" id="last_chat_response">
-                <div class="spinner"></div>
             </div>
-            <div style="clear:both;"></div>
+            {% if chats %}<br/>{% endif %}
+            <form id="chat_file_upload_form" action="/chat/file/upload" method="post" enctype="multipart/form-data">
+                <label for="chat_file">
+                    {% if chat_file_name %}
+                        Change {{ chat_file_name }}
+                    {% else %}
+                        Add a document to chat about <small>{{ supported_chat_file_types }}</small>
+                    {% endif %}
+                </label>
+                <br/>
+                <input type="file" id="chat_file" name="chat_file" class="control"
+                       accept=".txt, .csv, .doc, .docx, .pdf"/>
+                <div id="chat_file_upload_error" class="control_error" style="display:none;"></div>
+                <br/>
+                <button type="submit" id="chat_file_upload_submit" class="control">Upload</button>
+            </form>
+            <br/>
+            <div id="chat_file_upload_progress" class="control" style="display:none;">
+                <div class="spinner"></div>
+                <div id="chat_file_upload_progress_message" class="spinner_message"></div>
+                <br/>
+            </div>
+            <form id="chat_request_form" action="/chat" method="get">
+                <label for="chat_request">
+                    {% if not chats %}
+                        Ask me anything about your document {% if chat_file_name %}: {{ chat_file_name }}{% endif %}
+                    {% endif %}
+                </label>
+                <br/>
+                <textarea id="chat_request" name="chat_request" class="control"
+                          placeholder="Type your question here" rows="3" cols="42"></textarea>
+                <div id="chat_request_error" class="control_error" style="display:none;"></div>
+                <br/>
+                <button type="submit" id="chat_request_submit" class="control">Send</button>
+            </form>
         </div>
-        {% if chats %}<br/>{% endif %}
-        <form id="chat_file_upload_form" action="/chat/file/upload" method="post" enctype="multipart/form-data">
-            <label for="chat_file">
-                {% if chat_file_name %}Change {{ chat_file_name }}{% endif %}
-                {% if not chat_file_name %}
-                Add a document to chat about <small>{{ supported_chat_file_types }}</small>
-                {% endif %}
-            </label>
-            <br/>
-            <input type="file" id="chat_file" name="chat_file" class="control"
-                   accept=".txt, .csv, .doc, .docx, .pdf"/>
-            <div id="chat_file_upload_error" class="control_error" style="display:none;"></div>
-            <br/>
-            <button type="submit" id="chat_file_upload_submit" class="control">Upload</button>
-        </form>
-        <br/>
-        <div id="chat_file_upload_progress" class="control" style="display:none;">
-            <div class="spinner"></div>
-            <div id="chat_file_upload_progress_message" class="spinner_message"></div>
-            <br/>
-        </div>
-        <form id="chat_request_form" action="/chat/request" method="get">
-            <label for="chat_request">
-                {% if not chats %}
-                    Ask me anything about your document {% if chat_file_name %}: {{ chat_file_name }}{% endif %}
-                {% endif %}
-            </label>
-            <textarea id="chat_request" name="chat_request" class="control"
-                      placeholder="Type your question here" rows="3" cols="42"></textarea>
-            <div id="chat_request_error" class="control_error" style="display:none;"></div>
-            <br/>
-            <button type="submit" id="chat_request_submit" class="control">Send</button>
-        </form>
     </div>
     <script>
         function httpGetAsync(url, onSuccess, onError) {
@@ -106,36 +128,40 @@
 
         chatFileUploadProgress();
 
-        const chatFileUploadForm = document.getElementById("chat_file_upload_form");
-        const chatFile = document.getElementById("chat_file");
-        chatFile.value = '';
-        chatFileUploadForm.addEventListener("submit", function(event){
-            const chatFileError = document.getElementById("chat_file_upload_error");
-            const chatFileValue = chatFile.value;
-            if (chatFileValue && chatFileValue.trim()) {
-                chatFileError.style.display = 'none';
+        function setUpForm(formId, inputId, inputDisplayName, errorId, beforeSendToServer) {
+            const form = document.getElementById(formId);
+            const input = document.getElementById(inputId);
+            input.value = '';
+            const error = document.getElementById(errorId);
+            input.addEventListener("change", function(){
+                error.style.display = 'none';
+            });
+            form.addEventListener("submit", function(event){
+                const inputValue = input.value;
+                if (inputValue && inputValue.trim()) {
+                    error.style.display = 'none';
+                    if (beforeSendToServer) {
+                        beforeSendToServer(inputValue);
+                    }
+                } else {
+                    event.preventDefault();
+                    error.style.display = 'block';
+                    error.innerText = inputDisplayName + ' is required.';
+                }
+            });
+        }
+
+        setUpForm(
+            "chat_file_upload_form", "chat_file", "Chat file", "chat_file_upload_error",
+            function(_){
                 document.getElementById("chat_file_upload_progress").style.display = 'block';
-            } else {
-                event.preventDefault();
-                chatFileError.style.display = 'block';
-                chatFileError.innerText = 'You have not selected any file.'
-            }
-        })
-        const chatRequestForm = document.getElementById("chat_request_form");
-        const chatRequest = document.getElementById("chat_request");
-        chatRequest.value = '';
-        chatRequestForm.addEventListener("submit", function(event){
-            const chatRequestError = document.getElementById("chat_request_error");
-            const chatRequestText = chatRequest.value;
-            if (chatRequestText && chatRequestText.trim()) {
-                chatRequestError.style.display = 'none';
+            });
+
+        setUpForm(
+            "chat_request_form", "chat_request", "Chat request", "chat_request_error",
+            function(chatRequestText){
                 document.getElementById("last_chat").style.display = 'block';
                 document.getElementById("last_chat_request").innerText = chatRequestText;
-            } else {
-                event.preventDefault();
-                chatRequestError.style.display = 'block';
-                chatRequestError.innerText = 'You have not entered any text.'
-            }
-        })
+            });
     </script>
 {% endblock %}

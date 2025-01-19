@@ -17,7 +17,8 @@ class WebService:
             WebVar.APP_NAME.value: app_config.app_name,
             WebVar.TITLE.value: app_config.app_title,
             WebVar.HEADING.value: app_config.app_title,
-            WebVar.SUPPORTED_CHAT_FILE_TYPES.value: DocLoader.get_supported_file_extensions()
+            WebVar.SUPPORTED_CHAT_FILE_TYPES.value: DocLoader.get_supported_file_extensions(),
+            WebVar.CHAT_MODELS.value: ChatService.get_chat_models()
         }
         self.__chat_service = chat_service
 
@@ -34,7 +35,9 @@ class WebService:
 
         chat_config = ChatConfig(self.__app_config, web_data)
 
-        self.__chat_service.add_chat_ai(session_id, chat_config, False)
+        chat_ai = self.__chat_service.add_chat_ai(session_id, chat_config, False)
+
+        web_data[WebVar.CHAT_MODEL] = {'name': chat_ai.get_model().name }
 
         return web_data
 

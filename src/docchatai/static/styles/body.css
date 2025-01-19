@@ -1,75 +1,150 @@
-body {
-    font-size: 1.5rem;
-    font-family: 'Roboto', sans-serif;
-    padding:1rem;
-    background-color: #024 /** THEME_BG_COLOR_1 */;
-    color: #def;
+body, html {
+    height: 100%;
 }
 
-body .heading {
+body {
+    background-color: #024;
+    color: #def;
+    font-size: 1.5rem;
+    font-family: 'Roboto', sans-serif;
+    padding: 0;
+    margin: 0;
+}
+
+.fixed_top {
+    background-color: #012;
+    height: 2.5rem;
+    margin: 0;
+    overflow: hidden;
+    padding-left:0.5rem;
+    position: fixed; /* Set the navbar to fixed position */
+    top: 0; /* Position the navbar at the top of the page */
     width: 100%;
-    background-color: #012 /** THEME_BG_COLOR_2 */;
-    font-size: 2rem;
-    font-weight: 700;
+    z-index: 1000;
+}
+
+.fixed_top_left {
+    float: left;
     padding: 0.5rem;
+}
+
+.fixed_top_right {
+    float: right;
+    padding: 0.5rem;
+}
+
+.fixed_top a {
+    color: #def;
+    text-decoration:none;
+}
+
+.fixed_top a:hover {
+    background-color: #024;
+}
+
+#page_body {
+    margin: 1rem;
+    min-height: 90%; /** This (kind of) helps the page bottom to stay at the bottom */
+}
+
+#page_heading {
+    background-color: #012;
+    border-radius: 1rem;
+    font-size: 2rem;
+    font-weight: 550;
+    margin-top: 3.5rem; /** .fixed_top.height(2.5rem;) + 1rem; */
+    padding: 0.5rem;
+    text-align: center;
+    width: 100%;
+}
+
+#page_content {
+    background-color: #012;
+    border-radius: 1rem;
+    margin-top: 1rem;
+    padding: 0.5rem;
+    width: 100%;
+}
+
+#page_content_left {
+    display: inline-block;
+    padding: 0.5rem;
+    vertical-align: top;
+    width: 25%;
+}
+
+#page_content_right {
+    display: inline-block;
+    padding: 0.5rem;
+    vertical-align: top;
+}
+
+#page_bottom {
+    background-color: #012;
+    font-size: 0.75rem;
+    margin-top: 1rem;
+    padding: 0.5rem 0.5rem 0.5rem 1rem;
+    width: 100%;
 }
 
 body .error {
-    width: 100%;
-    background-color: #db4437;
-    color: white;
+    background-color: #def;
+    color: red;
     margin: 0.5rem;
+    width: 100%;
 }
 
 body .info {
-    width: 100%;
-    background-color: white;
-    color: navy;
+    background-color: #def;
+    color: green;
     margin: 0.5rem;
+    text-align: center;
+    width: 100%;
+}
+
+#side_bar {
+    background-color: #024;
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+}
+
+#side_bar a { color: #def; }
+
+#chat {
+    background-color: #012;
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    vertical-align: top;
+    /** width: 40rem; */
 }
 
 .chat_message {
-    width: 75%;
+    border-radius: 0.5rem;
     margin: 0.5rem;
     padding: 0.5rem;
-    border-radius: 0.5rem;
+    width: 75%;
 }
-.chat_message_left { float: left; background-color:blue; }
-.chat_message_right { float: right; background-color:green; }
-
-#page_bottom {
-    width: 100%;
-    font-size: 0.75rem;
-    background-color: #012 /** THEME_BG_COLOR_2 */;
-    margin-top: 0.5rem;
-    padding: 0.5rem;
-}
-
-.chat_messages {
-    width: 40rem;
-    background-color: #012 /** THEME_BG_COLOR_2 */;
-    padding: 1rem;
-    border-radius: 0.5rem;
-}
+.chat_message_left { background-color:blue; float: left; }
+.chat_message_right { background-color:green; float: right; }
 
 form .control {
-    font-size: 1.5rem;
-    margin-top: 0.5rem;
-    margin-bottom:0.5rem;
     border-radius: 0.5rem;
+    font-size: 1.5rem;
+    margin-bottom:0.5rem;
+    margin-top: 0.5rem;
 }
 
 form .control_error { color: #db4437; }
 
 form button {
     background-color: #0f9df7;
-    padding: 0.5rem 1rem;
     border: none;
+    padding: 0.5rem 1rem;
 }
 
 .spinner_message {
-    font-size: 1rem;
     color: #25b09b;
+    font-size: 1rem;
 }
 
 .spinner {
