@@ -5,7 +5,7 @@ import sys
 from datetime import datetime
 
 from .config import AppConfig
-from .threads import Threads
+from .concurrency import Threads
 
 logger = logging.getLogger(__name__)
 

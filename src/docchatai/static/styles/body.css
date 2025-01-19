@@ -67,6 +67,11 @@ form button {
     border: none;
 }
 
+.spinner_message {
+    font-size: 1rem;
+    color: #25b09b;
+}
+
 .spinner {
     width: 50px;
     padding: 8px;

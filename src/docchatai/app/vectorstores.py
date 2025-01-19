@@ -1,68 +1,44 @@
-import hashlib
 import logging
-import os.path
-import re
 from abc import abstractmethod
 from concurrent import futures
-from typing import Iterator
 
 from langchain.embeddings import CacheBackedEmbeddings
 from langchain.storage import LocalFileStore
-from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
-from langchain_text_splitters import TextSplitter, RecursiveCharacterTextSplitter
 
-from .config import RunConfig
-from .threads import Threads
+from .config import ChatConfig
+from .concurrency import Threads
+from .doc_loader import DocLoader
+from .utils import safe_unique_key
 
 logger = logging.getLogger(__name__)
 
 
 class VectorStores:
-    non_alpha_numeric_pattern = re.compile('[^A-Za-z0-9_-]+')
-
-    @staticmethod
-    def _unique_name(chat_model_name: str, input_file_path: str) -> str:
-        # Keep these to provide a glimpse of the which chat model and file was used.
-        chat_model_prefix = VectorStores.non_alpha_numeric_pattern.sub(
-            '_', chat_model_name[:32])
-        input_file_suffix = VectorStores.non_alpha_numeric_pattern.sub(
-            '_', os.path.basename(input_file_path)[-32:])
-        # Use a hash to keep the name short and unique.
-        hash_hex = hashlib.sha256(f'{chat_model_name}{input_file_path}'.encode()).hexdigest()
-        return f'{chat_model_prefix}_{input_file_suffix}_{hash_hex}'
-
     @staticmethod
     def len(vectorstore) -> int:
         return 0 if vectorstore is None else len(vectorstore.index_to_docstore_id)
 
     @staticmethod
-    def file_backed_embeddings(run_config: RunConfig, embeddings: Embeddings) -> Embeddings:
-        store = LocalFileStore(run_config.app_dir + "/.embeddings-cache/")
-        namespace = VectorStores._unique_name(run_config.chat_model_name, run_config.input_file)
+    def file_backed_embeddings(run_config: ChatConfig, embeddings: Embeddings) -> Embeddings:
+        store = LocalFileStore(run_config.app_config.app_dir + "/.embeddings-cache/")
+        namespace = safe_unique_key(run_config.chat_file, run_config.chat_model_name)
         return CacheBackedEmbeddings.from_bytes_store(embeddings, store, namespace=namespace)
-
-    @staticmethod
-    def yield_pages(input_file_path: str) -> Iterator[Document]:
-        loader = PyPDFLoader(input_file_path)
-        page_iterator: Iterator[Document] = loader.lazy_load()
-        text_splitter: TextSplitter = RecursiveCharacterTextSplitter()
-
-        for page in page_iterator:
-            # We pass only one page as an array
-            docs = text_splitter.create_documents([page.page_content], [page.metadata])
-            if docs is None or len(docs) == 0:
-                logger.debug(f'Skipped page: {page.metadata}')
-                continue
-            logger.debug(f' Parsed page: {page.metadata}')
-            yield docs[0]
 
 class VectorStoreLoader:
     @abstractmethod
-    def load(self, run_config: RunConfig, embeddings: Embeddings) -> 'VectorStoreLoader':
+    def load(self, run_config: ChatConfig, embeddings: Embeddings) -> 'VectorStoreLoader':
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_loaded_pages(self) -> int:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_total_pages(self) -> int:
         raise NotImplementedError()
 
     @abstractmethod
@@ -75,14 +51,27 @@ class VectorStoreLoader:
 
 
 class VectorStoreLoaderSync(VectorStoreLoader):
-    def __init__(self):
-        self.__vectorstore = None
+    def __init__(self, cls=FAISS):
+        self.__cls = cls
+        self.__total_pages = None
+        self.__vectorstore: VectorStore or None = None
 
-    def load(self, run_config: RunConfig, embeddings: Embeddings) -> VectorStoreLoader:
-        page_list: [Document] = list(VectorStores.yield_pages(run_config.input_file))
+    def load(self, run_config: ChatConfig, embeddings: Embeddings) -> VectorStoreLoader:
+        page_list: [Document] = list(DocLoader.yield_pages(run_config.chat_file))
+        self.__total_pages = len(page_list)
         embeddings = VectorStores.file_backed_embeddings(run_config, embeddings)
-        self.__vectorstore = FAISS.from_documents(page_list, embeddings)
+        self.__vectorstore = self.__cls.from_documents(page_list, embeddings)
         return self
+
+    def get_loaded_pages(self) -> int:
+        if self.__vectorstore is None:
+            raise ValueError('First call load(), before querying loaded pages')
+        return VectorStores.len(self.__vectorstore)
+
+    def get_total_pages(self) -> int:
+        if self.__total_pages is None:
+            raise ValueError('First call load(), before querying total pages')
+        return self.__total_pages
 
     def get(self) -> VectorStore:
         return self.__vectorstore
@@ -92,41 +81,46 @@ class VectorStoreLoaderSync(VectorStoreLoader):
 
 
 class VectorStoreLoaderMultiThreaded(VectorStoreLoader):
-    def __init__(self, cls=FAISS, batch_size: int = 0):
+    def __init__(self, cls=FAISS):
         self.__cls = cls
+        self.__total_pages = None
         self.__futures = []
-        self.__batch_size = batch_size
-        self.__vectorstore = None
+        self.__vectorstore: VectorStores or None = None
 
-    def load(self, run_config: RunConfig, embeddings: Embeddings) -> VectorStoreLoader:
-        page_list: [Document] = list(VectorStores.yield_pages(run_config.input_file))
+    def load(self, run_config: ChatConfig, embeddings: Embeddings) -> VectorStoreLoader:
+        page_list: [Document] = list(DocLoader.yield_pages(run_config.chat_file))
+        self.__total_pages = len(page_list)
         embeddings = VectorStores.file_backed_embeddings(run_config, embeddings)
 
-        if len(page_list) == 0:
+        if self.__total_pages == 0:
             raise ValueError('No valid pages found in the document')
 
-        if self.__batch_size <= 0:
-            batch_size = len(page_list) / run_config.max_worker_threads
-            if batch_size < 1:
-                batch_size = 1
-        else:
-            batch_size = self.__batch_size
+        batch_size = self.__total_pages / run_config.app_config.max_worker_threads
+        if batch_size < 1:
+            batch_size = 1
 
         # First
         first_page = page_list[0]
         if first_page is None:
             raise ValueError('No valid pages found in the document')
-        logger.debug(f'Loading page: {first_page.metadata}')
         self.__vectorstore = self.__cls.from_documents([first_page], embeddings)
+        logger.debug('Saved first page')
 
         # Remaining
         def add_pages_to_store(pages: [Document]):
+            page_nums = None
             try:
+                if len(pages) == 0:
+                    return
+
+                vectorstore = self.__cls.from_documents(pages, embeddings)
+                self.__vectorstore.merge_from(vectorstore)
+
                 page_nums = ','.join([str(p.metadata['page']) for p in pages])
-                logger.debug(f'Loading pages: {page_nums}')
-                self.__vectorstore.merge_from(self.__cls.from_documents(pages, embeddings))
+                logger.debug(f'Saved pages: {page_nums}')
+
             except Exception as ex:
-                logger.debug(f'Error loading pages.\n{ex}')
+                logger.error('Error loading pages: %s. %s', page_nums, ex, exc_info=True)
 
         batch = []
         for page in page_list[1:]:
@@ -134,10 +128,21 @@ class VectorStoreLoaderMultiThreaded(VectorStoreLoader):
             if len(batch) >= batch_size:
                 self.__futures.append(Threads.submit(add_pages_to_store, batch))
                 batch = []
+
         if len(batch) > 0:
             self.__futures.append(Threads.submit(add_pages_to_store, batch))
 
         return self
+
+    def get_loaded_pages(self) -> int:
+        if self.__vectorstore is None:
+            raise ValueError('First call load(), before querying loaded pages')
+        return VectorStores.len(self.__vectorstore)
+
+    def get_total_pages(self) -> int:
+        if self.__total_pages is None:
+            raise ValueError('First call load(), before querying total pages')
+        return self.__total_pages
 
     def get(self) -> VectorStore:
         return self.__vectorstore

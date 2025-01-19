@@ -12,6 +12,6 @@ APP_DIR=[Required]
 APP_SECRET_KEY=[Required]
 CHAT_MODEL="[Optional, default=llama3.1]"
 CHAT_MODEL_PROVIDER="[Optional, default=ollama]"
-INPUT_FILE=[Required]
+CHAT_FILE=[Required]
 MAX_RESULTS_PER_QUERY="[Optional, default=3]"
 ```

@@ -1,5 +1,6 @@
 import logging
 import os
+from enum import unique, Enum
 from sys import argv
 
 logger = logging.getLogger(__name__)
@@ -71,40 +72,67 @@ class AppConfig:
         log_level = 'INFO' if self.is_production is True else 'DEBUG'
         return {
             'version': 1,
-            'formatters': {'simple': {'format': '%(asctime)s %(name)s %(levelname)s %(message)s'}},
+            'formatters': {
+                'simple': {'format': '%(asctime)s %(name)s %(levelname)s %(message)s'}},
             'handlers': {'console': {
                 'class': 'logging.StreamHandler', 'level': f'{log_level}', 'formatter': 'simple'}},
-            'loggers': {'app': {'level': f'{log_level}', 'handlers': ['console'], 'propagate': False}}
+            'loggers': {
+                'docchatai': {'level': f'{log_level}', 'handlers': ['console'], 'propagate': False}}
         }
 
+@unique
+class ChatVar(str, Enum):
+    def __new__(cls, value):
+        obj = str.__new__(cls, [value])
+        obj._value_ = value
+        return obj
+    MODEL_PROVIDER = 'chat_model_provider'
+    MODEL = 'chat_model'
+    FILE = 'chat_file'
+    TEMPLATE = 'chat_template'
+    REQUEST = 'chat_request'
 
-
-class RunConfig(AppConfig):
-    def __init__(self):
+class ChatConfig:
+    def __init__(self, app_config: AppConfig = AppConfig(), values: dict[str, str] = None):
         super().__init__()
-        logger.debug(f'Args: {argv}')
+        self.__app_config = app_config
+        self.__values = {} if values is None else values
+
+    @property
+    def app_config(self) -> AppConfig:
+        return self.__app_config
 
     @property
     def chat_model_provider(self) -> str:
-        return os.environ.get('CHAT_MODEL_PROVIDER',
-                              argv[1] if len(argv) > 1 else self.default_chat_model_name)
+        return self._get_val_key_case_insensitive(
+            ChatVar.MODEL_PROVIDER, argv[1] if len(argv) > 1 else self.app_config.default_chat_model_name)
 
     @property
     def chat_model_name(self) -> str:
-        return os.environ.get('CHAT_MODEL',
-                              argv[2] if len(argv) > 2 else self.default_chat_model_name)
+        return self._get_val_key_case_insensitive(
+            ChatVar.MODEL, argv[2] if len(argv) > 2 else self.app_config.default_chat_model_name)
 
     @property
-    def input_file(self) -> str:
-        input_file = os.environ.get('INPUT_FILE', argv[3] if len(argv) > 3 else None)
-        if input_file is None:
-            raise ValueError('Input file is required')
-        return input_file
+    def chat_file(self) -> str:
+        return self._get_val_key_case_insensitive(ChatVar.FILE, argv[3] if len(argv) > 3 else None)
 
     @property
     def chat_template(self) -> str:
-        return os.environ.get('CHAT_TEMPLATE', self.default_chat_template)
+        return self._get_val_key_case_insensitive(ChatVar.TEMPLATE, self.app_config.default_chat_template)
+
+    @property
+    def chat_request(self) -> str:
+        return self._get_val_key_case_insensitive(ChatVar.REQUEST, None)
+
+    def _get_val_key_case_insensitive(self, key: ChatVar, default: str or None) -> str or None:
+        key = key.value
+        value = self.__values.get(key, os.environ.get(key, None))
+        if value is None:
+            key = key.upper()
+            value = self.__values.get(key, os.environ.get(key, None))
+        return default if value is None else value
 
     def __str__(self):
         return (f'RunConfig: model={self.chat_model_name}, '
-                f'max_result_per_query={self.max_results_per_query}, input_file={self.input_file}')
+                f'max_result_per_query={self.app_config.max_results_per_query}, '
+                f'chat_file={self.chat_file}, chat_request={self.chat_request}')

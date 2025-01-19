@@ -1,25 +1,61 @@
 import logging
 
 import time
+from langchain_core.language_models import BaseChatModel
 
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 
-from .config import RunConfig
+from .config import ChatConfig
 from .vectorstores import VectorStoreLoader, VectorStoreLoaderMultiThreaded
 
 logger = logging.getLogger(__name__)
 
+class ChatAI:
+    def __init__(self,
+                 loader: VectorStoreLoader,
+                 model: BaseChatModel,
+                 prompt: ChatPromptTemplate,
+                 search_kwargs: dict[str, any]):
+        self.__loader: VectorStoreLoader = loader
+        self.__model: BaseChatModel = model
+        self.__prompt: ChatPromptTemplate = prompt
+        self.__search_kwargs = search_kwargs
+
+    def invoke(self, request: str) -> str:
+        return self.get_handler().invoke(request)
+
+    def get_handler(self):
+        return (
+                {
+                    'request': RunnablePassthrough(),
+                    'context': self.__loader.get().as_retriever(search_kwargs=self.__search_kwargs),
+                }
+                | self.__prompt
+                | self.__model
+                | StrOutputParser()
+        )
+
+    def get_loader(self) -> VectorStoreLoader:
+        return self.__loader
+
+    def get_model(self) -> BaseChatModel:
+        return self.__model
+
+    def get_prompt(self) -> ChatPromptTemplate:
+        return self.__prompt
+
+    def get_search_kwargs(self) -> dict[str, any]:
+        return self.__search_kwargs
+
 class ChatService:
     __store = {}
-    def __init__(self, vectorstore_loader: VectorStoreLoader = VectorStoreLoaderMultiThreaded()):
-        self.__vectorstore_loader = vectorstore_loader
 
     @staticmethod
     def model(name: str, provider: str):
         from langchain.chat_models import init_chat_model
-        return init_chat_model(name, model_provider=provider, temperature=0)
+        return init_chat_model(name, model_provider=provider, temperature=1.0)
 
     @staticmethod
     def embeddings(name: str, provider: str):
@@ -30,64 +66,71 @@ class ChatService:
         else:
             raise ValueError(f'Unsupported model provider for embeddings: {provider}')
 
-    def create_chat_ai(self, run_config: RunConfig, wait_till_completed: bool = True):
-        logger.debug('create_chat_ai')
-        chat_prompt = ChatPromptTemplate.from_template(run_config.chat_template)
+    def new_vectorstore_loader(self) -> VectorStoreLoader:
+        return VectorStoreLoaderMultiThreaded()
 
-        chat_model = ChatService.model(run_config.chat_model_name, run_config.chat_model_provider)
-        embeddings = ChatService.embeddings(run_config.chat_model_name, run_config.chat_model_provider)
-        logger.debug(f'Chat model ready: {run_config.chat_model_name}')
+    def create_chat_ai(self, chat_config: ChatConfig, wait_till_completed: bool = True) -> ChatAI:
+        logger.debug('chat_config: %s', chat_config)
+        chat_prompt = ChatPromptTemplate.from_template(chat_config.chat_template)
 
-        loader = self.__vectorstore_loader.load(run_config, embeddings)
+        chat_model = ChatService.model(chat_config.chat_model_name, chat_config.chat_model_provider)
+        embeddings = ChatService.embeddings(chat_config.chat_model_name, chat_config.chat_model_provider)
+        logger.debug(f'Chat model ready: {chat_config.chat_model_name}')
+
+        loader = self.new_vectorstore_loader().load(chat_config, embeddings)
         vectorstore = loader.wait_till_completed() if wait_till_completed is True else loader.get()
         logger.debug(f'Vectorstore ready: {vectorstore}')
 
-        retriever = vectorstore.as_retriever(search_kwargs={'k': run_config.max_results_per_query})
+        return ChatAI(loader, chat_model, chat_prompt,
+                      {'k': chat_config.app_config.max_results_per_query})
 
-        return (
-                {
-                    'request': RunnablePassthrough(),
-                    'context': retriever,
-                }
-                | chat_prompt
-                | chat_model
-                | StrOutputParser()
-        )
+    @staticmethod
+    def _get_session_store(session_id: str):
+        session_store = ChatService.__store.get(session_id, None)
+        if session_store is None:
+            session_store = {}
+            ChatService.__store[session_id] = session_store
+        return session_store
+
+    def add_chat_ai(self,
+                    session_id: str,
+                    chat_config: ChatConfig,
+                    wait_till_completed: bool = True) -> ChatAI:
+        session_store = ChatService._get_session_store(session_id)
+        chat_ai = self.create_chat_ai(chat_config, wait_till_completed)
+        session_store['chat_ai'] = chat_ai
+        return chat_ai
+
+    @staticmethod
+    def get_chat_ai(session_id: str) -> ChatAI or None:
+        session_store = ChatService._get_session_store(session_id)
+        return session_store.get('chat_ai', None)
 
     def chat_request(self,
                      session_id: str,
-                     request_data: dict[str, any],
+                     chat_config: ChatConfig,
                      limit: int = 100) -> [dict[str, any]]:
-        logger.debug('chat_request, request_data: %s', request_data)
-
-        store = ChatService.__store.get(session_id, None)
-        if store is None:
-            store = {}
-            ChatService.__store[session_id] = store
-
-        chat_ai = store.get('chat_ai', None)
+        chat_ai = self.get_chat_ai(session_id)
         if chat_ai is None:
-            run_config = RunConfig()
-            chat_ai = self.create_chat_ai(run_config)
-            store['chat_ai'] = chat_ai
+            chat_ai = self.add_chat_ai(session_id, chat_config)
 
-        request = request_data['request']
-        logger.debug("Chat request: %s", request)
-        response = chat_ai.invoke(request)
-        logger.debug("Chat response: %s", response)
+        response = chat_ai.invoke(chat_config.chat_request)
+        logger.debug("Chat response ready")
 
-        chats = store.get('chats', None)
+        session_store = ChatService._get_session_store(session_id)
+        chats = session_store.get('chats', None)
         if chats is None:
             chats = []
-            store['chats'] = chats
+            session_store['chats'] = chats
 
-        chats.append({'request': request, 'response': response})
-        logger.debug('Session chats: %s', chats)
+        chats.append({'request': chat_config.chat_request, 'response': response})
+        logger.debug('Session chats: %s', len(chats))
 
         return chats[-limit:]
 
+
 class EchoChatService(ChatService):
-    def create_chat_ai(self, run_config: RunConfig, _: bool = True):
+    def create_chat_ai(self, chat_config: ChatConfig, _: bool = True):
         class EchoChat:
             def __init__(self, sleep_time: int = 3):
                 self.__sleep_time = sleep_time

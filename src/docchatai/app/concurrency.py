@@ -8,7 +8,8 @@ class Threads:
 
     @staticmethod
     def init(max_workers: int = 50):
-       Threads.__executor = ThreadPoolExecutor(max_workers=max_workers)
+        logger.info("Initializing app thread pool executor.")
+        Threads.__executor = ThreadPoolExecutor(max_workers=max_workers)
 
     @staticmethod
     def submit(function, /, *args, **kwargs) -> Future:
@@ -17,7 +18,8 @@ class Threads:
     @staticmethod
     def shutdown(wait: bool = False, cancel_futures: bool = True):
         if Threads.__executor is None:
-            logger.warning('Skipping shutdown of thread pool executor, as it was never initialized.')
+            logger.warning(
+                'Skipping shutdown of app thread pool executor, as it was never initialized.')
             return
-        logger.info('Shutting down thread pool executor.')
+        logger.info('Shutting app down thread pool executor.')
         Threads.__executor.shutdown(wait=wait, cancel_futures=cancel_futures)

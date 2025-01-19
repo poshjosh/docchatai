@@ -5,8 +5,10 @@ def get_logging_config() -> dict[str, any]:
     print(f'Log level: {log_level}')
     return {
         'version': 1,
-        'formatters': {'simple': {'format': '%(asctime)s %(name)s %(levelname)s %(message)s'}},
-        'handlers': {'console': {
-            'class': 'logging.StreamHandler', 'level': f'{log_level}', 'formatter': 'simple'}},
-        'loggers': {'docchatai.app': {'level': f'{log_level}', 'handlers': ['console'], 'propagate': False}}
+        'formatters': {
+            'simple': {'format': '%(asctime)s %(name)s %(levelname)s %(message)s'}},
+        'handlers': {
+            'console': {'class': 'logging.StreamHandler', 'level': f'{log_level}', 'formatter': 'simple'}},
+        'loggers': {
+            'docchatai': {'level': f'{log_level}', 'handlers': ['console'], 'propagate': False}}
     }
