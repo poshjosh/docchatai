@@ -1,4 +1,5 @@
 import logging
+import os
 import uuid
 from enum import unique, Enum
 
@@ -28,10 +29,9 @@ class WebVar(str, Enum):
     TITLE = 'title'
     HEADING = 'heading'
     CHAT_FILE = ChatVar.FILE.value
-    CHAT_FILE_NAME = 'chat_file_name'
+    CHAT_FILES = "chat_files"
     CHAT_MODELS = 'chat_models'
     CHAT_MODEL = 'chat_model'
-
 
 class WebData:
     @staticmethod
@@ -61,6 +61,16 @@ class WebData:
         except ValueError as value_ex:
             logger.exception(value_ex)
             raise ValidationError(value_ex.args[0])
+
+    @staticmethod
+    def update_session(response_data: dict[str, any]):
+        chat_file: dict[str, any] = response_data[ChatVar.FILE.value]
+        session[WebVar.CHAT_FILE.value] = chat_file
+        session[WebVar.CHAT_MODEL] = response_data[WebVar.CHAT_MODEL]
+
+        chat_files = session.get(WebVar.CHAT_FILES.value, [])
+        chat_files.append(chat_file)
+        session[WebVar.CHAT_FILES.value] = chat_files
 
     @staticmethod
     def strip_values(data: dict[str, any]):

@@ -1,6 +1,7 @@
 from flask import Flask
 
 from docchatai.app.config import AppConfig
+from docchatai.app.file_service import FileService
 from docchatai.app.web_service import WebService
 from docchatai.app.chat_service import ChatService
 
@@ -14,7 +15,9 @@ def create_web_app(app_config: AppConfig = AppConfig(),
     # CORS(app)
 
     app.config['app_config'] = app_config
-    app.config['web_service'] = WebService(app_config, ChatService())
+    app.config['web_service'] = WebService(app_config,
+                                           ChatService(app_config.default_chat_message_limit),
+                                           FileService(app_config.uploads_dir))
 
     return app
 

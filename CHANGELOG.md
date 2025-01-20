@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add uploaded files options.
 - Add chat model options.
 - Convert to a web app, add more tests.
 - Initial code

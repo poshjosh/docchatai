@@ -91,6 +91,7 @@ body .error {
     background-color: #def;
     color: red;
     margin: 0.5rem;
+    text-align: center;
     width: 100%;
 }
 
@@ -135,6 +136,8 @@ form .control {
 }
 
 form .control_error { color: #db4437; }
+
+form select { width: 20rem; }
 
 form button {
     background-color: #0f9df7;

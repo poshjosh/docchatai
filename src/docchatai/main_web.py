@@ -1,11 +1,9 @@
 import logging.config
-import os.path
 
 import jinja2.utils
-from flask import render_template, request, session
+from flask import render_template, request
 
 from docchatai.app.app import App
-from docchatai.app.config import ChatVar
 from docchatai.app.doc_loader import UnsupportedFileTypeError
 from docchatai.app.web_data import ValidationError, WebData, WebVar
 from docchatai.app.web_app import web_app
@@ -35,16 +33,24 @@ def handle_validation_error(e):
 def index():
     return render_template(INDEX_TEMPLATE, **web_service.index())
 
+@web_app.route('/chat/model')
+def chat_model():
+    return render_template(INDEX_TEMPLATE, **web_service.index({"error": "Not yet implemented!"}))
+
+@web_app.route('/chat/file/select')
+def chat_file_select():
+    chat_file = WebData.get(request, WebVar.CHAT_FILE.value)
+    if not chat_file:
+        return render_template(INDEX_TEMPLATE, **web_service.index({"error": "No file selected"}))
+    return render_template(INDEX_TEMPLATE, **web_service.index({"error": "Not yet implemented!"}))
+
 @web_app.route('/chat/file/upload', methods=['POST'])
 def chat_file_upload():
     form_data = WebData.collect_request_form(request.form)
 
     response_data = web_service.chat_file_upload(form_data, request.files)
 
-    chat_file_path = response_data[ChatVar.FILE.value]
-    session[WebVar.CHAT_FILE.value] = chat_file_path
-    session[WebVar.CHAT_FILE_NAME.value] = os.path.basename(chat_file_path)
-    session[WebVar.CHAT_MODEL] = response_data[WebVar.CHAT_MODEL]
+    WebData.update_session(response_data)
 
     return render_template(INDEX_TEMPLATE, **web_service.index(response_data))
 
@@ -52,11 +58,8 @@ def chat_file_upload():
 def chat_file_upload_progress():
     return str(web_service.chat_file_upload_progress(WebData.get_session_id()))
 
-@web_app.route('/chat')
+@web_app.route('/chat/request')
 def chat_request():
-    chat_model = WebData.get(request, 'model', None)
-    if chat_model is not None:
-        return render_template(INDEX_TEMPLATE, **web_service.index({"info": "Not yet implemented!"}))
 
     form_data = WebData.collect_request_form(request.form)
 

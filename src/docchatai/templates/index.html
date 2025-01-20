@@ -10,7 +10,7 @@
                         {% if chat_model and model.name == chat_model.name %}
                             {{ model }}
                         {% else %}
-                            <a href="/chat?model={{ model.name | url_quote }}">
+                            <a href="/chat/model?name={{ model.name | url_quote }}">
                                 {{ model.name }} by {{ model.provider }}
                             </a>
                         {% endif %}
@@ -35,39 +35,55 @@
                 </div>
                 <div style="clear:both;"></div>
             </div>
-            {% if chats %}<br/>{% endif %}
+            {% if chat_files %}
+                <p>
+                    <label for="chat_file_select">Select an existing document</label>
+                    <br/>
+                    <select id="chat_file_select" name="chat_file" class="control">
+                        <option>Select an existing document</option>
+                        {% for cf in chat_files %}
+                            {% if chat_file and chat_file.original_filename == cf.original_filename %}
+                                <option value="{{ cf.output_path }}" selected>{{ cf.original_filename }}</option>
+                            {% else %}
+                                <option value="{{ cf.output_path }}">{{ cf.original_filename }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </p>
+            {% endif %}
             <form id="chat_file_upload_form" action="/chat/file/upload" method="post" enctype="multipart/form-data">
-                <label for="chat_file">
-                    {% if chat_file_name %}
-                        Change {{ chat_file_name }}
-                    {% else %}
+                <p>
+                    <label for="chat_file">
+                        {% if chat_file %}
+                        Change {{ chat_file.original_filename }}
+                        {% else %}
                         Add a document to chat about <small>{{ supported_chat_file_types }}</small>
-                    {% endif %}
-                </label>
-                <br/>
-                <input type="file" id="chat_file" name="chat_file" class="control"
-                       accept=".txt, .csv, .doc, .docx, .pdf"/>
-                <div id="chat_file_upload_error" class="control_error" style="display:none;"></div>
-                <br/>
+                        {% endif %}
+                    </label>
+                    <br/>
+                    <input type="file" id="chat_file" name="chat_file" class="control"
+                           accept=".txt, .csv, .doc, .docx, .pdf"/>
+                    <span id="chat_file_upload_error" class="control_error" style="display:none;"></span>
+                </p>
                 <button type="submit" id="chat_file_upload_submit" class="control">Upload</button>
             </form>
-            <br/>
             <div id="chat_file_upload_progress" class="control" style="display:none;">
                 <div class="spinner"></div>
                 <div id="chat_file_upload_progress_message" class="spinner_message"></div>
                 <br/>
             </div>
-            <form id="chat_request_form" action="/chat" method="get">
-                <label for="chat_request">
-                    {% if not chats %}
-                        Ask me anything about your document {% if chat_file_name %}: {{ chat_file_name }}{% endif %}
-                    {% endif %}
-                </label>
-                <br/>
-                <textarea id="chat_request" name="chat_request" class="control"
-                          placeholder="Type your question here" rows="3" cols="42"></textarea>
-                <div id="chat_request_error" class="control_error" style="display:none;"></div>
-                <br/>
+            <form id="chat_request_form" action="/chat/request" method="get">
+                <p>
+                    <label for="chat_request">
+                        {% if not chats %}
+                        Ask me anything about{% if chat_file %}: {{ chat_file.original_filename }}{% endif %}
+                        {% endif %}
+                    </label>
+                    <br/>
+                    <textarea id="chat_request" name="chat_request" class="control"
+                              placeholder="Type your question here" rows="3" cols="42"></textarea>
+                    <span id="chat_request_error" class="control_error" style="display:none;"></span>
+                </p>
                 <button type="submit" id="chat_request_submit" class="control">Send</button>
             </form>
         </div>
@@ -87,6 +103,18 @@
             xmlHttp.open("GET", url, true); // true for asynchronous
             xmlHttp.send(null);
         }
+
+        function handleChatFileSelection() {
+            document.getElementById("chat_file_select").addEventListener("change", function(){
+                const selectedFile = this.value;
+                if (selectedFile) {
+                    window.location.href = "/chat?file=" + selectedFile;
+                }
+            });
+        }
+
+        handleChatFileSelection()
+
         function chatFileUploadProgress() {
             const url = "/chat/file/upload/progress";
             const progressElement = document.getElementById("chat_file_upload_progress");

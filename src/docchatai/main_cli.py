@@ -13,9 +13,9 @@ if __name__ == '__main__':
     try :
         App.init(app_config)
 
-        chat_config = ChatConfig(app_config)
+        chat_config = ChatConfig.from_sys_args(app_config)
 
-        chat_ai = ChatService().create_chat_ai(chat_config)
+        chat_ai = ChatService(app_config.default_chat_message_limit).create_chat_ai(chat_config)
 
         # Start asking questions and getting answers in a loop
         print(f"{datetime.now().time()} Document: {chat_config.chat_file}")

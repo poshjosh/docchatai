@@ -72,6 +72,9 @@ class ChatService:
         else:
             raise ValueError(f'Unsupported model provider for embeddings: {provider}')
 
+    def __init__(self, message_display_limit: int = 100):
+        self.__message_display_limit = message_display_limit
+
     def new_vectorstore_loader(self) -> VectorStoreLoader:
         return VectorStoreLoaderMultiThreaded()
 
@@ -112,15 +115,12 @@ class ChatService:
         session_store = ChatService._get_session_store(session_id)
         return session_store.get('chat_ai', None)
 
-    def chat_request(self,
-                     session_id: str,
-                     chat_config: ChatConfig,
-                     limit: int = 100) -> [dict[str, any]]:
+    def chat_request(self, session_id: str, request: str, chat_config: ChatConfig) -> [dict[str, any]]:
         chat_ai = self.get_chat_ai(session_id)
         if chat_ai is None:
             chat_ai = self.add_chat_ai(session_id, chat_config)
 
-        response = chat_ai.invoke(chat_config.chat_request)
+        response = chat_ai.invoke(request)
         logger.debug("Chat response ready")
 
         session_store = ChatService._get_session_store(session_id)
@@ -129,11 +129,10 @@ class ChatService:
             chats = []
             session_store['chats'] = chats
 
-        chats.append({'request': chat_config.chat_request, 'response': response})
+        chats.append({'request': request, 'response': response})
         logger.debug('Session chats: %s', len(chats))
 
-        return chats[-limit:]
-
+        return chats[-self.__message_display_limit:]
 
 class EchoChatService(ChatService):
     def create_chat_ai(self, chat_config: ChatConfig, _: bool = True):
@@ -146,3 +145,66 @@ class EchoChatService(ChatService):
                 return request
 
         return EchoChat()
+
+# class ChatModel:
+#     def __init__(self, name: str, provider: str or None = None):
+#         self.name = name
+#         self.provider = provider
+#
+#     def to_dict(self):
+#         return {'name': self.name, 'provider': self.provider}
+#
+#     def __str__(self):
+#         return f'ChatModel({str(self.to_dict())})'
+#
+# class Chat:
+#     def __init__(self, request: str, response: str or None = None):
+#         self.request = request
+#         self.response = response
+#
+#     def to_dict(self):
+#         return {'request': self.request, 'response': self.response}
+#
+#     def __str__(self):
+#         return f'Chat({str(self.to_dict())})'
+#
+# class ChatSession:
+#     @staticmethod
+#     def from_config(chat_config: ChatConfig) -> 'ChatSession':
+#         chat_session = ChatSession()
+#         chat_session.model = ChatModel(chat_config.chat_model_name, chat_config.chat_model_provider)
+#         chat_session.template = chat_config.chat_template
+#         chat_session.file_path = chat_config.chat_file
+#         return chat_session
+#
+#     @staticmethod
+#     def from_dict(data: dict[str, any]) -> 'ChatSession':
+#         chat_session = ChatSession()
+#         chat_session.model = ChatModel(data['model']['name'], data['model']['provider'])
+#         chat_session.template = data['template']
+#         chat_session.last_request = data['last_request']
+#         chat_session.chats = [Chat(chat['request'], chat['response']) for chat in data['messages']]
+#         chat_session.original_file_name = data['original_file_name']
+#         chat_session.file_path = data['file_path']
+#         return chat_session
+#
+#     def __init__(self):
+#         self.model: ChatModel or None = None
+#         self.template: str or None = None
+#         self.last_request: str or None = None
+#         self.chats: List[Chat] or None = None
+#         self.original_file_name: str or None = None
+#         self.file_path: str or None = None
+#
+#     def to_dict(self):
+#         return {
+#             'model': self.model.to_dict() if self.model is not None else None,
+#             'template': self.template,
+#             'last_request': self.last_request,
+#             'chats': [chat.to_dict() for chat in self.chats] if self.chats is not None else None,
+#             'original_file_name': self.original_file_name,
+#             'file_path': self.file_path
+#         }
+#
+#     def __str__(self):
+#         return f'ChatSession({str(self.to_dict())})'

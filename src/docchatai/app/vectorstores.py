@@ -23,9 +23,9 @@ class VectorStores:
         return 0 if vectorstore is None else len(vectorstore.index_to_docstore_id)
 
     @staticmethod
-    def file_backed_embeddings(run_config: ChatConfig, embeddings: Embeddings) -> Embeddings:
-        store = LocalFileStore(run_config.app_config.app_dir + "/.embeddings-cache/")
-        namespace = safe_unique_key(run_config.chat_file, run_config.chat_model_name)
+    def file_backed_embeddings(chat_config: ChatConfig, embeddings: Embeddings) -> Embeddings:
+        store = LocalFileStore(chat_config.app_config.app_dir + "/.embeddings-cache/")
+        namespace = safe_unique_key(chat_config.chat_file, chat_config.chat_model_name)
         return CacheBackedEmbeddings.from_bytes_store(embeddings, store, namespace=namespace)
 
 class VectorStoreLoader:
@@ -56,10 +56,10 @@ class VectorStoreLoaderSync(VectorStoreLoader):
         self.__total_pages = None
         self.__vectorstore: VectorStore or None = None
 
-    def load(self, run_config: ChatConfig, embeddings: Embeddings) -> VectorStoreLoader:
-        page_list: [Document] = list(DocLoader.yield_pages(run_config.chat_file))
+    def load(self, chat_config: ChatConfig, embeddings: Embeddings) -> VectorStoreLoader:
+        page_list: [Document] = list(DocLoader.yield_pages(chat_config.chat_file))
         self.__total_pages = len(page_list)
-        embeddings = VectorStores.file_backed_embeddings(run_config, embeddings)
+        embeddings = VectorStores.file_backed_embeddings(chat_config, embeddings)
         self.__vectorstore = self.__cls.from_documents(page_list, embeddings)
         return self
 
@@ -87,15 +87,15 @@ class VectorStoreLoaderMultiThreaded(VectorStoreLoader):
         self.__futures = []
         self.__vectorstore: VectorStores or None = None
 
-    def load(self, run_config: ChatConfig, embeddings: Embeddings) -> VectorStoreLoader:
-        page_list: [Document] = list(DocLoader.yield_pages(run_config.chat_file))
+    def load(self, chat_config: ChatConfig, embeddings: Embeddings) -> VectorStoreLoader:
+        page_list: [Document] = list(DocLoader.yield_pages(chat_config.chat_file))
         self.__total_pages = len(page_list)
-        embeddings = VectorStores.file_backed_embeddings(run_config, embeddings)
+        embeddings = VectorStores.file_backed_embeddings(chat_config, embeddings)
 
         if self.__total_pages == 0:
             raise ValueError('No valid pages found in the document')
 
-        batch_size = self.__total_pages / run_config.app_config.max_worker_threads
+        batch_size = self.__total_pages / chat_config.app_config.max_worker_threads
         if batch_size < 1:
             batch_size = 1
 

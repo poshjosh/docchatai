@@ -28,14 +28,13 @@ class VectorStoresTestCase(BaseTestCase):
         # All the pages have not been fully loaded, by the time we get here.
         self.assertGreater(VectorStores.len(vectorstore), 1)
 
-    def test_vectorstore_loader_get_progress(self):
-        print(f'{datetime.now().time()} test_vectorstore_loader_sync')
+    def test_vectorstore_loader_get_loaded_pages(self):
+        print(f'{datetime.now().time()} test_vectorstore_loader_get_loaded_pages')
         loader = VectorStoreLoaderSync()
         self._test_vectorstore_loader(loader)
-        self.assertEqual(1, loader.get_progress_percent())
+        self.assertEqual(loader.get_total_pages(), loader.get_loaded_pages())
 
     def _test_vectorstore_loader(self, loader: VectorStoreLoader) -> VectorStore:
-        print(f'{datetime.now().time()} test_vectorstore_loader_sync')
         vectorstore = loader.load(self.run_config, self.embeddings).wait_till_completed()
         print(f'{datetime.now().time()} DONE loading pages, len: {VectorStores.len(vectorstore)}')
         return vectorstore

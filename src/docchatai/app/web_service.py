@@ -4,14 +4,13 @@ import logging
 from .chat_service import ChatService, ChatAI
 from .config import AppConfig, ChatConfig
 from .doc_loader import DocLoader
-from .image_service import save_files
-from .web_data import WebVar
+from .file_service import FileService, UploadedFile
+from .web_data import WebVar, WebData, ValidationError
 
 logger = logging.getLogger(__name__)
 
 class WebService:
-    def __init__(self, app_config: AppConfig, chat_service: ChatService):
-        self.__chat_limit = app_config.default_chat_message_limit
+    def __init__(self, app_config: AppConfig, chat_service: ChatService, file_service: FileService):
         self.__app_config = app_config
         self.default_page_variables = {
             WebVar.APP_NAME.value: app_config.app_name,
@@ -21,6 +20,7 @@ class WebService:
             WebVar.CHAT_MODELS.value: ChatService.get_chat_models()
         }
         self.__chat_service = chat_service
+        self.__file_service = file_service
 
     def index(self, web_data: dict[str, any] = None) -> dict[str, str]:
         logger.debug('index, web_data: %s', web_data)
@@ -31,7 +31,9 @@ class WebService:
 
         session_id = web_data[WebVar.SESSION_ID.value]
 
-        web_data.update(save_files(self.__app_config.uploads_dir, session_id, files))
+        saved_files: [UploadedFile] = self.__file_service.save_files(session_id, files)
+        for saved_file in saved_files:
+            web_data[saved_file.name] = saved_file.to_dict()
 
         chat_config = ChatConfig(self.__app_config, web_data)
 
@@ -39,7 +41,7 @@ class WebService:
 
         web_data[WebVar.CHAT_MODEL] = {'name': chat_ai.get_model().name }
 
-        return web_data
+        return self._with_default_page_variables(web_data)
 
     def chat_file_upload_progress(self, session_id: str) -> str:
         logger.debug('chat_file_upload_progress, session_id: %s', session_id)
@@ -55,8 +57,12 @@ class WebService:
         logger.debug('chat_request, web_data: %s', web_data)
 
         chat_config = ChatConfig(self.__app_config, web_data)
-        chats = self.__chat_service.chat_request(
-            web_data[WebVar.SESSION_ID.value], chat_config, self.__chat_limit)
+
+        request = web_data.get(WebVar.REQUEST.value, None)
+        if not request:
+            raise ValidationError('Chat message text is required')
+
+        chats = self.__chat_service.chat_request(WebData.get_session_id(), request, chat_config)
 
         #logger.debug('Session chats: %s', chats)
 
