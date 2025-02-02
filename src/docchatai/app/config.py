@@ -110,6 +110,10 @@ class ChatConfig:
 
     @staticmethod
     def from_dict(app_config: AppConfig = AppConfig(), values: dict[str, str] = None) -> 'ChatConfig':
+        chat_file = values.get(str(ChatVar.FILE.value), None)
+        if isinstance(chat_file, dict):
+            # Use a copy
+            values = {**values, str(ChatVar.FILE.value): chat_file['output_path']}
         return ChatConfig(app_config, values)
 
     def __init__(self, app_config: AppConfig = AppConfig(), values: dict[str, str] = None):

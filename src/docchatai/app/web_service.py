@@ -32,10 +32,14 @@ class WebService:
         session_id = web_data[WebVar.SESSION_ID.value]
 
         saved_files: [UploadedFile] = self.__file_service.save_files(session_id, files)
-        for saved_file in saved_files:
-            web_data[saved_file.name] = saved_file.to_dict()
+        if len(saved_files) > 1:
+            raise NotImplementedError('Multiple file uploads is not yet supported')
+        elif len(saved_files) == 1:
+            web_data[WebVar.CHAT_FILE.value] = saved_files[0].to_dict()
+        # for saved_file in saved_files:
+        #     web_data[saved_file.name] = saved_file.to_dict()
 
-        chat_config = ChatConfig(self.__app_config, web_data)
+        chat_config = ChatConfig.from_dict(self.__app_config, web_data)
 
         chat_ai = self.__chat_service.add_chat_ai(session_id, chat_config, False)
 
@@ -56,13 +60,13 @@ class WebService:
     def chat_request(self, web_data: dict[str, any]) -> dict[str, any]:
         logger.debug('chat_request, web_data: %s', web_data)
 
-        chat_config = ChatConfig(self.__app_config, web_data)
+        chat_config = ChatConfig.from_dict(self.__app_config, web_data)
 
-        request = web_data.get(WebVar.REQUEST.value, None)
-        if not request:
+        chat_request = web_data.get('chat_request', None)
+        if not chat_request:
             raise ValidationError('Chat message text is required')
 
-        chats = self.__chat_service.chat_request(WebData.get_session_id(), request, chat_config)
+        chats = self.__chat_service.chat_request(WebData.get_session_id(), chat_request, chat_config)
 
         #logger.debug('Session chats: %s', chats)
 

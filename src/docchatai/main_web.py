@@ -46,7 +46,7 @@ def chat_file_select():
 
 @web_app.route('/chat/file/upload', methods=['POST'])
 def chat_file_upload():
-    form_data = WebData.collect_request_form(request.form)
+    form_data = WebData.collect_request_form(request)
 
     response_data = web_service.chat_file_upload(form_data, request.files)
 
@@ -61,7 +61,7 @@ def chat_file_upload_progress():
 @web_app.route('/chat/request')
 def chat_request():
 
-    form_data = WebData.collect_request_form(request.form)
+    form_data = WebData.collect_request_form(request)
 
     response_data = web_service.chat_request(form_data)
 

@@ -1,5 +1,4 @@
 import logging
-import os
 import uuid
 from enum import unique, Enum
 
@@ -51,9 +50,10 @@ class WebData:
         return session_id
 
     @staticmethod
-    def collect_request_form(request_form) -> dict[str, any]:
+    def collect_request_form(request) -> dict[str, any]:
         try:
-            web_data = dict(request_form)
+            web_data = dict(request.form)
+            web_data[ChatVar.REQUEST.value] = WebData.get(request, ChatVar.REQUEST.value)
             web_data = WebData.strip_values(web_data)
             web_data[WebVar.SESSION_ID.value] = WebData.get_session_id()
             logger.debug(f"Form data: {web_data}")

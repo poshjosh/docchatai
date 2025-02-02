@@ -76,7 +76,7 @@
                 <p>
                     <label for="chat_request">
                         {% if not chats %}
-                        Ask me anything about{% if chat_file %}: {{ chat_file.original_filename }}{% endif %}
+                            {% if chat_file %}Ask me anything about: {{ chat_file.original_filename }}{% endif %}
                         {% endif %}
                     </label>
                     <br/>
@@ -105,10 +105,14 @@
         }
 
         function handleChatFileSelection() {
-            document.getElementById("chat_file_select").addEventListener("change", function(){
-                const selectedFile = this.value;
+            const chatFileOptions = document.getElementById("chat_file_select");
+            if (!chatFileOptions) {
+                return;
+            }
+            chatFileOptions.addEventListener("change", function(){
+                const selectedFile = chatFileOptions.value;
                 if (selectedFile) {
-                    window.location.href = "/chat?file=" + selectedFile;
+                    window.location.href = "/chat/file/select?chat_file=" + selectedFile;
                 }
             });
         }
