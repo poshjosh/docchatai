@@ -4,9 +4,9 @@
 #
 #    pip-compile requirements.in
 #
-aiohappyeyeballs==2.4.4
+aiohappyeyeballs==2.4.6
     # via aiohttp
-aiohttp==3.11.11
+aiohttp==3.11.13
     # via
     #   langchain
     #   langchain-community
@@ -24,13 +24,13 @@ async-timeout==4.0.3
     # via
     #   aiohttp
     #   langchain
-attrs==24.3.0
+attrs==25.1.0
     # via aiohttp
-beautifulsoup4==4.12.3
+beautifulsoup4==4.13.3
     # via wikipedia
 blinker==1.9.0
     # via flask
-certifi==2024.12.14
+certifi==2025.1.31
     # via
     #   httpcore
     #   httpx
@@ -47,15 +47,19 @@ distro==1.9.0
     # via openai
 docarray==0.40.0
     # via -r requirements.in
-duckduckgo-search==7.2.1
+duckduckgo-search==7.5.0
     # via -r requirements.in
 exceptiongroup==1.2.2
     # via anyio
-faiss-cpu==1.9.0.post1
+faiss-cpu==1.10.0
     # via -r requirements.in
 feedparser==6.0.11
     # via arxiv
 flask==3.1.0
+    # via
+    #   -r requirements.in
+    #   flask-cors
+flask-cors==5.0.1
     # via -r requirements.in
 frozenlist==1.5.0
     # via
@@ -69,7 +73,7 @@ h11==0.14.0
     # via httpcore
 httpcore==1.0.7
     # via httpx
-httpx==0.27.2
+httpx==0.28.1
     # via
     #   langsmith
     #   ollama
@@ -82,7 +86,7 @@ idna==3.10
     #   httpx
     #   requests
     #   yarl
-importlib-metadata==8.5.0
+importlib-metadata==8.6.1
     # via flask
 itsdangerous==2.2.0
     # via flask
@@ -94,13 +98,13 @@ jsonpatch==1.33
     # via langchain-core
 jsonpointer==3.0.0
     # via jsonpatch
-langchain==0.3.14
+langchain==0.3.19
     # via
     #   -r requirements.in
     #   langchain-community
-langchain-community==0.3.14
+langchain-community==0.3.18
     # via -r requirements.in
-langchain-core==0.3.29
+langchain-core==0.3.40
     # via
     #   -r requirements.in
     #   langchain
@@ -108,19 +112,19 @@ langchain-core==0.3.29
     #   langchain-ollama
     #   langchain-openai
     #   langchain-text-splitters
-langchain-ollama==0.2.2
+langchain-ollama==0.2.3
     # via -r requirements.in
-langchain-openai==0.3.0
+langchain-openai==0.3.7
     # via -r requirements.in
-langchain-text-splitters==0.3.5
+langchain-text-splitters==0.3.6
     # via langchain
-langsmith==0.2.10
+langsmith==0.3.11
     # via
     #   -r requirements.in
     #   langchain
     #   langchain-community
     #   langchain-core
-lxml==5.3.0
+lxml==5.3.1
     # via duckduckgo-search
 markdown-it-py==3.0.0
     # via rich
@@ -128,7 +132,7 @@ markupsafe==3.0.2
     # via
     #   jinja2
     #   werkzeug
-marshmallow==3.25.1
+marshmallow==3.26.1
     # via dataclasses-json
 mdurl==0.1.2
     # via markdown-it-py
@@ -144,13 +148,13 @@ numpy==1.26.4
     #   faiss-cpu
     #   langchain
     #   langchain-community
-ollama==0.4.6
+ollama==0.4.7
     # via langchain-ollama
-openai==1.59.7
+openai==1.65.1
     # via
     #   -r requirements.in
     #   langchain-openai
-orjson==3.10.14
+orjson==3.10.15
     # via
     #   docarray
     #   langsmith
@@ -158,14 +162,15 @@ packaging==24.2
     # via
     #   faiss-cpu
     #   langchain-core
+    #   langsmith
     #   marshmallow
-primp==0.10.0
+primp==0.14.0
     # via duckduckgo-search
-propcache==0.2.1
+propcache==0.3.0
     # via
     #   aiohttp
     #   yarl
-pydantic==2.10.5
+pydantic==2.10.6
     # via
     #   docarray
     #   langchain
@@ -176,11 +181,11 @@ pydantic==2.10.5
     #   pydantic-settings
 pydantic-core==2.27.2
     # via pydantic
-pydantic-settings==2.7.1
+pydantic-settings==2.8.1
     # via langchain-community
 pygments==2.19.1
     # via rich
-pypdf==5.1.0
+pypdf==5.3.0
     # via -r requirements.in
 python-dotenv==1.0.1
     # via pydantic-settings
@@ -213,11 +218,10 @@ sgmllib3k==1.0.0
 sniffio==1.3.1
     # via
     #   anyio
-    #   httpx
     #   openai
 soupsieve==2.6
     # via beautifulsoup4
-sqlalchemy==2.0.37
+sqlalchemy==2.0.38
     # via
     #   langchain
     #   langchain-community
@@ -226,7 +230,7 @@ tenacity==9.0.0
     #   langchain
     #   langchain-community
     #   langchain-core
-tiktoken==0.8.0
+tiktoken==0.9.0
     # via langchain-openai
 tqdm==4.67.1
     # via openai
@@ -235,6 +239,7 @@ types-requests==2.32.0.20241016
 typing-extensions==4.12.2
     # via
     #   anyio
+    #   beautifulsoup4
     #   langchain-core
     #   multidict
     #   openai
@@ -253,13 +258,17 @@ urllib3==2.3.0
     #   requests
     #   types-requests
 werkzeug==3.1.3
-    # via flask
+    # via
+    #   flask
+    #   flask-cors
 wikipedia==1.4.0
     # via -r requirements.in
 yarl==1.18.3
     # via aiohttp
 zipp==3.21.0
     # via importlib-metadata
+zstandard==0.23.0
+    # via langsmith
 
 # The following packages are considered to be unsafe in a requirements file:
 # pip
